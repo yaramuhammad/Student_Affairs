@@ -1,0 +1,893 @@
+**Getting python directory using:
+import sys
+sys.prefix
+########################################
+**Setting Up a python venv:
+- create
+	*Syntax: python -m venv env_name
+- activate (every time you work on the project)
+	*Syntax: .\env_name\Scripts\activate
+	*When active, displays (env_name) on the left side of the terminal
+- install packages
+	*Syntax: pip install package_name
+- deactivate
+	*Syntax: deactivate
+######################################################
+***Using Anaconda:
+- conda create -n envname python=x.x anaconda
+- conda activate envname
+- conda install -n yourenvname package
+- conda deactivate 
+- conda remove -n envname -all
+########################################
+***THIS TUTORIAL USES DJANGO 2.0.7
+**display packages: pip freeze
+############################################################################
+***Create a Django Project:
+- best to create it in a new folder
+*Syntax: django-admin createproject proj_name
+##############################################
+**Running a Django Project:
+python manage.py runserver
+##########################################################################
+***Settings.py:
+BASE_DIR = the path of manage.py #can be used to do things relative to the basedir
+SECRET_KEY = each project has a unique secret key
+DEBUG = True # should be true while testing & learning, false IRL
+INSTALLED_APPS = [list of installed app names]
+MIDDLEWARE = [for Security]
+ROOT_URLCONF = "projname.urls" # used to route by default
+TEMPLATES = [] #html templates
+WSGI_APPLICATION = "the setting used to operate the server"
+
+DATABASES = { # used to map to the backend, can change the backend from here
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',#the engine used (sqlite by default)
+        'NAME': BASE_DIR / 'db.sqlite3', #can change db name to create a new db
+    }
+}
+
+STATIC_URL = "path where static files are stores"
+########################################################################
+** Migrate:
+- Syncs settings and apps with the db
+*Syntax: python manage.py migrate
+#######################################
+***Admin:
+**Creating a superuser:
+- python manage.py createsuperuser 
+- enter username & pass
+- go to projectname/admin and sign in
+###############################
+**Apps:
+- Components of the Project
+- Each App should do one thing only
+- add it to INSTALLED_APPS
+*Creating an app: python manage.py startapp app_name
+#######################################################
+***Models.py:
+- for every app, empty by default
+- used to store data in the db
+*Adding a model:
+- must inherit from models.Model
+########
+***Make Migration:
+- run everytime a change is made to the DB
+python manage.py makemigrations
+python manage.py migrate
+
+class Product(models.Model):
+    title = models.TextField()
+    description = models.TextField()
+    price =models.TextField()
+    summary = models.TextField(default="this is cool!")# default in case of null
+#################################################
+** Registering a model to control it from the admin page:
+# in appname -> admin.py
+from .models import Product
+admin.site.register(Product) 
+################################################
+**Modifying the db using the python shell:
+	*Syntax: from appname.models import modelname
+	*Ex: from products.models import Product
+
+**Product.objects.all() # returns all tuples in the db, like select *
+
+**creating an object:
+Product.objects.create(title="New Product 2", description="dis2", price="990",
+summary="sum")
+################################################
+***Other Model Fields:
+**Doc: https://docs.djangoproject.com/en/4.0/ref/models/fields/
+*Example:
+class Product(models.Model):
+    title = models.CharField(max_length=120)
+    # blank has to do with how the field is rendered in the admin page, null is the main one for the db
+    description = models.TextField(blank=True, null=True)
+    # like numeric(max_digits, decimal_places)
+    price =models.DecimalField(decimal_places=2, max_digits=1000)
+    summary = models.TextField(blank=False, null=False)
+    featured = models.BooleanField()
+#########################################################
+**Modifying models without deleting the db:
+- In case of adding an extra field (must either make it nullable for old tuples, 
+or give it a default value)
+##########################################################
+***Views:
+*Ex:
+def home_view(request,*args, **kwargs):
+    return HttpResponse("<h1>Hello, World</h1>")
+# in appname urls.py
+from appname.views import home_view
+path('home/', home_view, name="home"),
+#########################################
+**Request:
+- request is passed to all views
+- request.user contains username (if not logged in, AnonymousUser)
+########################################################################
+**Templates:
+- add the folder path containing the template html pages to:
+	settings.py -> TEMPLATES -> DIRS
+- then can use pagename.html only in the render function
+*Ex:
+DIRS': [BASE_DIR/"templates"]
+##########
+**Templating Engine:
+- Variables: {{ varname }}
+####################
+**Template Inheritance:
+- Creating an HTML Page with basic parts of the page that other pages inherit from
+- Named base.html by Convention
+
+*Defining a block
+{% block body %}
+      default content in case nothing is given
+{% endblock %}
+
+*Using it:
+{% extends "base.html" %}
+{% block body %}
+    <h1>Hello, World</h1>
+    <p>This is a Template</p>
+{% endblock %}
+
+*NOTE: If the block name is incorrect, the entire block won't be displayed
+#########################################################
+***Include:
+- used to include the content of an HTML Page into another
+- commonly used to seperate code for Nav Bars and other repeated content
+*Syntax:
+- create an html page for the navbar "navbar.html" with code for it
+<nav>
+    <ul>
+        <li>Item 1</li>
+        <li>Item 2</li>
+        <li>Item 3</li>
+    </ul>
+</nav>
+
+- in the base template (or any other page), put this line where the bar should be
+{% include "navbar.html" %}
+###########################################################################
+**Template Context:
+- The dictionry used to pass variables from a request into the html page
+*Ex:
+def about_view(request,*args, **kwargs):
+    my_context = {
+        "my_text":"Some Text",
+        "my_number": "Some Number",
+        "my_list": [123,456,789]
+    }
+    return render(request, "about.html", my_context)
+#####
+*Loops:
+    <ul>
+    {% for item in my_list %}
+        
+	#displays the loop iterator(1-based) and the item
+	<li>{{forloop.counter}} - {{ item }}</li> 
+
+        {% empty %} #what happens if the list is empty
+        <li>Nothing Found.</li>
+
+    {% endfor %}
+    </ul>
+##################
+**If Conditions:
+- best done in the view
+{% if item == 300 %}    #if
+    <li> Keeping it 300 </li>
+    {% elif  item == 200 %} #else if
+    <li>{{ item|add:20 }}</li> # add to the number
+    {% else %}
+    <li>{{ forloop.counter }} - {{ item }}</li>
+{% endif %}
+
+**Testing for Existence:
+<p>
+    {% if description %} # can use != None or != ''
+        {{ description }}
+    {% else %}
+        Description Coming Soon
+    {% endif %}
+</p>
+###########################################################
+***Template Tags and Filters:
+*Documentation: https://docs.djangoproject.com/en/4.0/ref/templates/builtins/
+- Tags: body, comment, include, for, if , etc...
+- Filters: a function, takes a context variable and performs the function on it
+    * Can be built in (like add), or custom
+    * Can apply multiple filters: {{name|capfirst|upper}}
+    * Syntax: {{ vblname|filtername:param }}
+    * Ex:
+        - {{ item1|add:item2 }} adds 2 numbers
+        - {{ vbl|capfirst }} # makes sure the 1st letter of vbl is in Uppercase
+        - {{ text|title }} # capitalizes 1st letter of each word in the text
+        - {{ someHTML|safe }} # if html code is passed, safe renders it
+        - {{ someHTML|striptags }} # strips the html tags from a tag
+        - {{ someHTML|slugify }} #turns a tag into a URL-safe version
+###########################################################
+** Using Data from the DB:
+* Getting a specific row: (assuming model name Product)
+    Product.objects.get(id = 1) # or another attribute
+* Accessing attributes:
+    obj = Product.objects.get(id = 1)
+    obj.price
+    obj.id
+    obj.summary, etc...
+* ID attribute:
+- each tuple has an ID, automatically added
+- starts from 1 and increments automatically
+##
+* Passing an Object to a page:
+def product_detail_view(request):
+    obj = Product.objects.get(id=1)
+    my_context = {
+        # "title": obj.title,
+        # "description": obj.description,
+        # best to pass the entire object
+        "object":obj,
+    }
+    return render(request, "product/detail.html", my_context)
+
+* In the HTML Page, access attributes as follows:
+<h1>{{ object.title }}</h1>
+########################################################################
+*** VIMP: The Order Django uses to search for template:
+1- In the main project templates folder
+2- In the templates of built-in apps (admin, auth, etc...)
+3- In the Application-Specific templates folder
+#####
+** It is Best to put each application's templates inside its own folder
+########################################################################
+***Forms:
+- can create forms for users to enter data into the DB directly
+- inside any app's folder, create a forms.py file
+* Syntax (Assuming the model is Product):
+** Model Forms:
+1- In forms.py of an app:
+# to create ProductForm, import Product and forms
+from django import forms
+from .models import Product
+
+# Inherits from forms.modelForm
+class ProductForm(forms.ModelForm):
+    # Meta is a given name
+    class Meta:
+    # the name of the model you want to input into
+        model = Product
+
+    # the fields you want the user to input
+        fields = [
+            "title","description","price"
+        ]
+##########
+2- In views.py of the same app:
+def product_create_view(request):
+    # ignore the syntax for now
+    form = ProductForm(request.POST or None)
+
+    if form.is_valid():
+        form.save()
+        # to reload the page after submitting, re-render the form
+        form = ProductForm()
+
+    my_context = {
+        "form": form,
+    }
+    # passing the form object to the page
+    return render(request, "products/product_create.html", my_context)
+########
+3- In product_create.html:
+{% block body %}
+     <form method = 'POST'>
+        {% csrf_token %}
+
+        # .as_p renders the parameter form object into an HTML form
+        {{ form.as_p }}
+        <input type="submit" value="Save">
+    </form>
+{% endblock %}
+#########
+4- Add a URL for the view in the app's (or project's) urls.py
+#########################
+** Remember:
+1- Must specify method as POST: <form method='POST'>
+2- If POST, must add {% csrf_token %}
+3- All NOT NULL fields must be specified or an error will happen
+#####################
+*** PYCHARM Refactoring Changes info in the migrations folder
+** Comment: {# comment goes here #}
+###################################################################################################
+** GET:
+- Uses the url (or  GETs information the url)
+- can access data of the GET request using request.GET
+- request.GET (and POST) return a dict
+- can access form data using the value of the name param
+* Ex: request.GET["title"]
+
+* Ex: with a form that uses post
+<QueryDict: {}>
+
+** POST:
+- Saving Info in the backend (POSTing to the backend)
+- can access data of the POST request using request.POST
+- request.POST (and GET) return a dict
+- can access form data using the value of the name param
+* Ex: request.POST["title"] # ALOH
+
+* Ex: with a form using post, with input ALOH in an input with name='title'
+<QueryDict: {'csrfmiddlewaretoken': ['C4GIMq9WUFGNC0panT5Qol4cuOY5dbEpRT9ipio7gTD5eKUDNNyCdKaduxdPPw59'],
+'title': ['ALOH']}>
+###################################################################################################
+*** Raw HTML Forms:
+- Forms take an action and a method:
+    * action: the page the form data is sent to, (by default the current page)
+    * method: GET or POST (by default is GET)
+- To Use POST, you need to use {% csrf_token %}, otherwise will get a forbidden error
+
+* Ex of a raw HTML form:
+def product_create_view(request):
+    # used to differentiate between someone opening the page and someone submitting the form
+    print(request.GET)
+    if request.method=='POST':
+        # can access dict data using .get instead of  []
+        my_title = request.POST.get('title')
+        print(my_title)
+        # can get the remaining field and create a Product object with them
+        # my_obj = Product(title=my_title)
+    my_context = {}
+    return render(request, "products/product_create.html", my_context)
+
+<form method='POST'>
+{% csrf_token %}
+    <input type="text" name="title" placeholder="Enter Title">
+    <input type="submit" value="Save">
+</form>
+** Disadvantage: Cannot Validate Data Easily
+#####################################################################################
+*** Pure Django Forms:
+- Form Fields' docu: https://docs.djangoproject.com/en/4.0/ref/forms/fields/
+- no text field
+
+*Syntax:
+- In the app's forms.py
+
+class RawProductForm(forms.Form): # not forms.ModelForm
+    # with a Django Form, we have to declare our input
+    # similar to when defining the model: models.CharField()
+    title = forms.CharField()
+    description = forms.CharField()
+    price = forms.DecimalField()
+##################################
+- In the app's views.py
+
+from .forms import RawProductForm
+def product_create_view(request):
+    # in case of pure Django form, must define an instance of the form
+    # rendering an empty form for the GET method
+    # this is what happens when someone opens the page normally
+    my_form = RawProductForm(request.GET)
+
+    # rendering the form differently for the post method
+    # this is what happens when someone submits the form (since the form submits to the same page)
+    if request.method == 'POST':
+        # the next line makes the form validate automatically
+        my_form = RawProductForm(request.POST) # Note request.POST
+
+        # Django does its own extra validation in addition to HTML Validation
+        if my_form.is_valid():
+
+            # my_form.cleaned_data is:  {'title': 'd', 'description': 's', 'price': Decimal('2')}
+
+            # can add the form data directly to the db if the input names are the same as model fields
+            # ** to readjust the # of args
+            Product.objects.create(**my_form.cleaned_data)
+
+        else:
+            # if the data is not valid
+            print(my_form.errors)
+            # <ul class="errorlist"><li>description<ul class="errorlist">
+            # <li>This field is required.</li></ul></li><li>price<ul class="errorlist"><li>This field is required.</li>
+            # </ul></li></ul>
+
+##################################
+- In the product_create.html: (exactly the same as type 1)
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Save">
+</form>
+########################################################################################################################################
+*** Form Widgets:
+- Used to set html attributes of a specific input field
+- Each field type has its own widget
+class RawProductForm(forms.Form): # not forms.ModelForm
+    # with a Django Form, we have to declare our input
+    # similar to when defining the model: models.CharField()
+
+    # default args: required = True, label = vblname in title case
+
+
+    # the widget of a CharField is forms.TextInput
+    title = forms.CharField(label='', widget=forms.TextInput(
+        attrs={"placeholder": "Your Title"}
+    ))
+
+    # rendering the description as a text area by overwriting the widget attribute
+    # description = forms.CharField(required=False, widget=forms.Textarea)
+
+    # can change properties of the text area by passing a dict into the attrs arg of the constructor
+    description = forms.CharField(required=False, widget=forms.Textarea(
+        attrs={
+            # can control html classes and ids
+            "id": "new-id",
+            "class": "new-class-name two",
+            # also other
+            "rows":10,
+            "columns": 10,
+        }
+                                                                        )
+                                  )
+    price = forms.DecimalField(initial=199.99)# initial value of decimal field
+###########################################################################################
+*** Form Validation for the ModelForm:
+** Remember: Model Form
+class ProductForm(forms.ModelForm):
+    class Meta:
+        model = Product
+        fields = [
+            "title","description","price"
+        ]
+#####
+- can overwrite its fields by adding a vbl of the same name above the Meta Class
+- Only Overwritten if the vbl has the SAME name as the field
+* Ex: The Form now becomes:
+class ProductForm(forms.ModelForm):
+    title = forms.CharField(widget=forms.TextInput(attrs={"placeholder": "Enter a Title"}))
+    description = forms.CharField(required=False, widget=forms.Textarea(
+        attrs={
+            # can control html classes and ids
+            "id": "new-id",
+            "class": "new-class-name two",
+            # also other
+            "rows": 10,
+            "columns": 10,
+        }
+    )
+                                  )
+    price = forms.DecimalField(initial=199.99)  # initial value of decimal field
+    class Meta:
+        model = Product
+        fields = [
+            "title","description","price"
+        ]
+    # can perform extra validation
+    # function name must be clean_<field_name>(self)
+    def clean_title(self):
+        # getting the Post-Django-Cleaning title value
+        # this function is triggered after Django Validation
+        title = self.cleaned_data.get("title")
+
+        # Validation: making sure the title contains a specific word
+        if not "cfe" in title:
+            raise forms.ValidationError("This is not a valid Title")# this raises a message above the field
+        # can put other validations as well
+        # in case of no exceptions, the title is returned
+        return title
+#################################################
+** Initial Values for Forms:
+# to set initial data for a form:
+def render_initial_data(request):
+    # to do so, create a dict with keys with the fields of the form
+    obj = Product.objects.get(id=1)
+    my_form = ProductForm(request.POST or None, instance=obj)
+    if my_form.is_valid():
+        my_form.save()
+    return render(request, "products/product_create.html", {"form":my_form})
+#########################################################################################
+** Dynamic URL Routing:
+* Syntax: <type:vblname>, such as int, str, slug
+- Note: vblname must be the same as the parameter of the view
+*Ex:
+path('somepath/<int:id>/', dynamic_view)
+
+- The View Takes an Extra Argument
+def dynamic_view(request, id):
+    return HttpResponse('<h1>id</h1>')
+####
+* get_object_or_404:
+- Raises a 404 page if the lookup value is not found
+- best used instead of model_name.objects.get
+- from django.shortcuts import get_object_or_404
+* Syntax: get_object_or_404(model_name, lookup_field=lookup_value)
+def dynamic_lookup_view(request, num):
+    # object = Product.objects.get(id=num)
+    # best use get_object_or_404 to handle not found cases
+
+    object = get_object_or_404(Product, id=num)
+    return render(request, "products/product_detail.html", {"object":object})
+#################################################################
+** Can do the same thing using Http404 and a try block:
+- The Exception thrown is model_name.DoesNotExist
+
+* Ex:
+from django.http import Http404
+
+def dynamic_lookup_view(request, num):
+    # object = Product.objects.get(id=num)
+    # best use get_object_or_404 to handle not found cases
+
+    # get_object_or_404(model_name, lookup_field=lookup_value)
+    try:
+        object = Product.objects.get(id=num)
+        # object = get_object_or_404(Product, id=num)
+    except Product.DoesNotExist:
+        raise Http404
+    return render(request, "products/product_detail.html", {"object":object})
+#################################################################
+*** Deleting an Object from the DB:
+- obj.delete()
+- uses GET by default
+
+* Syntax:
+def product_delete_view(request, id):
+    obj = get_object_or_404(Product, id=id)
+    if request.method == 'POST':
+        # confirming delete
+        obj.delete()
+
+        # need to redirect since the current page will no longer exist
+        return redirect('../../')
+
+    # if method is not post, someone is just opening the page
+    return render(request, "products/product_delete.html", {"object":obj})
+################################################################################
+*** Getting all Objects in the DB:
+- model_name.object.all()
+
+* Ex:
+def product_list_view(request):
+    queryset = Product.objects.all()
+    return render(request, "products/product_list.html",{"object_list": queryset})
+
+{% for product in object_list %}
+    <li>{{ product.id }} - {{ product.title }}</li>
+    {% empty %}
+    <li>There are no Products.</li>
+{% endfor %}
+##########################################################################################
+*** Dynamic Linkning:
+- can add a function to the model to get the absolute URL
+def get_absolute_url(self):
+    return f"/products/{self.id}"
+
+- then can be used for each object passed:
+<li>{{ product.id }} - <a href="{{ product.get_absolute_url }}">{{ product.title }}</a></li>
+########################################################################
+*** URL Reversing:
+- A URL can be dynamically reversed using the name argument:
+- from django.urls import reverese
+
+*Ex1: Reversing a static URL:
+path('products/', product_list_view, name="product-list")
+reverse('product-list')
+
+*Ex2: Reversing a dynamic URL
+path('products/<int:num>',dynamic_lookup_view, name="lookup")
+reverse('lookup', kwargs={"num": self.id})# note the name must be the same as in the url
+#####################################################################################
+** In-App URLs:
+- each app should have its own urls.py
+
+- in the project's urls.py:
+        from django.urls import include, path
+        path('products/', include("products.urls"))
+
+- in the app's urls.py:
+from django.urls import path
+from .views import (product_list_view, product_delete_view, product_create_view, dynamic_lookup_view)
+urlpatterns = [
+    path('', product_list_view, name="product-list"),
+    path('create/', product_create_view, name="create"),
+    path('<int:num>',dynamic_lookup_view, name="lookup"),
+    path('<int:id>/delete', product_delete_view, name="delete")
+]
+##########
+** Namespacing:
+- best create a seperate namespace for each app
+- at the top of the app's urls.py add: app_name = 'appname'
+- when referencing a url from the app, must include the appname:namepara
+* Ex: reverse('products:lookup')
+##########################################################################################
+*** Class-based View:
+- pre-made versions of basic views:
+- from django.views.generic import (CreateView, DetailView, ListView, UpdateView, DeleteView)
+- By default, looks for <appname>/<modelname>_list.html (for list view), or _detail for detailView
+- Can overwrite that by specifying the template_name vbl
+
+** Syntax:
+* List View:
+# writing the view itself
+class ArticleListView(ListView):
+    # using our own template name
+    template_name = 'blog/blog_list.html'
+    # must provide queryset
+    queryset = Article.objects.all()
+
+# in the urls, call function .as_view()
+path('', ArticleListView.as_view(), name='list'),
+
+* Detail View:
+
+class ArticleDetailView(DetailView):
+    template_name = 'blog/blog_detail.html'
+    queryset = Article.objects.all()
+
+* NOTE: must change the dynamic param to pk to be read by the view
+    path('<int:pk>/', ArticleDetailView.as_view(), name="detail"),
+
+    # to use id or some other attribute as follows:
+        path('<int:id>/', ArticleDetailView.as_view(), name="detail"),
+
+    # need to override get_object
+
+    class ArticleDetailView(DetailView):
+        template_name = 'blog/blog_detail.html'
+        queryset = Article.objects.all()
+
+        # overriding built-in method get_object using get_object_or_404
+        def get_object(self):
+            _id = self.kwargs.get('id')
+            return get_object_or_404(Article, id=_id)
+
+##########################################################################################
+*** Remember: Queries for a DB:
+    model_name.object.filter(attr=val)
+* id__gt=1, to get tuples w/ ids > 1
+##########################################################################################
+* Create View:
+
+class ArticleCreateView(CreateView):
+    template_name = 'blog/blog_add.html'
+    # uses validations in the clean_ functions + django validations
+    form_class = ArticleForm
+    queryset = Article.objects.all()
+    # success url is the created item detail by default, can override by:
+    # success_url = '/'
+    def form_valid(self, form):
+        print(form.cleaned_data)
+        return super().form_valid(form)
+#####################################################################################
+* Update View:
+
+class ArticleUpdateView(UpdateView):
+    # uses the add page to update an existing object
+    template_name = 'blog/blog_add.html'
+    form_class = ArticleForm
+    queryset = Article.objects.all()
+    def get_object(self):
+        _id = self.kwargs.get('id')
+        return get_object_or_404(Article, id=_id)
+    def form_valid(self, form):
+        print(form.cleaned_data)
+        return super().form_valid(form)
+
+path('<int:id>/update/', ArticleUpdateView.as_view(), name="update")
+###############################################################################
+* Delete View:
+class ArticleDeleteView(DeleteView):
+    template_name = 'blog/blog_delete.html'
+    queryset = Article.objects.all()
+    # must have a success url
+    # cannot use success_url = '' when reversing, must use the function
+    def get_success_url(self):
+        return reverse('blog:list')
+    def get_object(self):
+        _id = self.kwargs.get('id')
+        return get_object_or_404(Article, id=_id)
+####################################################################################
+** Turning a function-based view to a class-based view:
+*Ex:
+- to turn:
+    def my_fbv(request, *args, **kwargs):
+        return HttpResponse("Hi")
+- to a class based view:
+    * from django.views import View
+- create a class that inherits from View and rename the function to the method it handles(GET/POST)
+
+class CourseView(View):
+    def get(self, request, *args, **kwargs):
+        return HttpResponse("Hi")
+    # use post for forms
+###
+* Note: Can use this feature to specify template_name
+class CourseView(View):
+    template_name = 'sometemplate'
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name)
+#########################################################################3
+** Passing Parameters to the get method:
+class CourseView(View):
+    def get(self, request, *args, **kwargs):
+        return HttpResponse("Hi")
+path('<int:id>/', CourseView.as_view(), name="detail"),
+###################################################################33
+** Raw Class-based methods:
+class CourseView(View):
+    template_name = 'course/course-list.html'
+    # making the id optional to call the same view for multiple URLs
+    def get(self, request, id=None,*args, **kwargs):
+        context = {}
+        if id is not None:
+            obj = get_object_or_404(Course, id=id)
+            context["object"] = obj
+        return render(request, self.template_name,context)
+
+path('', CourseView.as_view(), name="list"),
+# calls the same view with the id passed
+path('<int:id>', CourseView.as_view(), name="detail"),
+###########################################################################
+** Mixin:
+- allows us to extend class-based views with new code
+- takes an object of any class, used to reduce redundancy
+
+* Syntax:
+
+class CourseObjectMixin(object):
+    # if nth is passed, the default object is Course
+    model = Course
+    def get_object(self):
+        id = self.kwargs.get('id')
+        obj = None
+        if id is not None:
+            obj = get_object_or_404(self.model, id=id)
+        return obj
+
+##
+* Using it in some class-based view:
+# the Mixin must be passed first
+class CourseDeleteView(CourseObjectMixin, View):
+        #get_object is no longer needed after passing the Mixin
+    # def get_object(self):
+    #     id = self.kwargs.get('id')
+    #     obj = None
+    #     if id is not None:
+    #         obj = get_object_or_404(Course, id=id)
+    #     return obj
+
+
+    def get(self, request, id):
+        # this calls get_object() defined in the Mixin
+        obj = self.get_object()
+        context = {}
+        if obj is not None:
+            context['object'] = obj
+        return render(request, "course/course-delete.html", context)
+########################################################################################
+*** Raw Views:
+from django.shortcuts import render, get_object_or_404, redirect
+from .models import Course
+from .forms import CourseModelForm
+from django.views import View
+# Create your views here.
+
+
+class CourseView(View):
+    template_name = 'course/course-detail.html'
+    def get(self, request, id=None,*args, **kwargs):
+        context = {}
+        if id is not None:
+            obj = get_object_or_404(Course, id=id)
+            context["object"] = obj
+        return render(request, self.template_name,context)
+
+# Mixin: allows us to extend class-based views with new code
+# takes an object of any class, used to reduce redundancy
+class CourseObjectMixin(object):
+    # if nth is passed, the default object is Course
+    model = Course
+    def get_object(self):
+        id = self.kwargs.get('id')
+        obj = None
+        if id is not None:
+            obj = get_object_or_404(self.model, id=id)
+        return obj
+
+class CourseListView(View):
+    template_name = 'course/course-list.html'
+    queryset = Course.objects.all()
+    def get(self, request, *args, **kwargs):
+        mycontext = {"object_list": self.queryset}
+        return render(request, self.template_name, mycontext)
+
+class CourseCreateView(View):
+    template_name = 'course/course-create.html'
+    def get(self, request,*args, **kwargs):
+        form = CourseModelForm()
+        context = {"form": form}
+        return render(request, self.template_name,context)
+    def post(self, request):
+        form = CourseModelForm(request.POST)
+        if form.is_valid():
+            form.save()
+            form = CourseModelForm()
+        context = {"form": form}
+        return render(request, self.template_name, context)
+
+class CourseUpdateView(View):
+    def get_object(self, **kwargs):
+        id = self.kwargs.get('id')
+        context ={}
+        obj = None
+        if id is not None:
+            obj = get_object_or_404(Course, id=id)
+        return obj
+    def get(self, request, **kwargs):
+        context = {}
+        obj = self.get_object()
+        if obj is not None:
+            form = CourseModelForm(instance=obj)
+            context["object"] = obj
+            context["form"] = form
+        return render(request, "course/course-update.html",context)
+
+    def post(self, request, **kwargs):
+        context = {}
+        obj = self.get_object()
+        if obj is not None:
+            form = CourseModelForm(request.POST, instance=obj)
+            if form.is_valid():
+                form.save()
+            context["object"] = obj
+            context["form"] = form
+        return render(request, "course/course-update.html",context)
+
+# the Mixin must be passed first
+class CourseDeleteView(CourseObjectMixin, View):
+        #get_object is no longer needed after passing the Mixin
+    # def get_object(self):
+    #     id = self.kwargs.get('id')
+    #     obj = None
+    #     if id is not None:
+    #         obj = get_object_or_404(Course, id=id)
+    #     return obj
+
+
+    def get(self, request, id):
+        # this calls get_object() defined in the Mixin
+        obj = self.get_object()
+        context = {}
+        if obj is not None:
+            context['object'] = obj
+        return render(request, "course/course-delete.html", context)
+    def post(self, request, id):
+        # this calls get_object() defined in the Mixin
+        obj = self.get_object()
+        context = {}
+        if obj is not None:
+            obj.delete()
+            context["object"] = None
+            return redirect('course:list')
+        return render(request, 'course/course-delete.html', context)
+######################################################################################################3

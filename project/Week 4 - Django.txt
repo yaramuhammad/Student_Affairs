@@ -1,0 +1,274 @@
+**Django Applications: Server applications that process client requests
+########################################
+*Install Django: 
+pip3 install Django
+
+***Create a Django project: 
+django-admin startproject project_name
+
+#when executed, a project_name folder is created, including:
+1-manage.py
+2-proj1 folder with multiple .py files:
+	-settings.py: contains preloaded settings for the django project(can be altered)
+	-urls.py: like a table of contents for the web appliction's urls
+#########################################################
+**Running a django project:
+python manage.py runserver	#by default runs on the localhost on some port
+#######
+*Note: a django project = one or more django applications or services
+#########################################################################
+*Creating a django application:
+python manage.py startapp app_name
+
+#generates multiple .py files including:
+	-views.py: to describe what the user sees when they visit a particular route
+######
+*To install the created application into the project:
+-Go into settings.py and add app_name to the list of strings
+##############################################################################
+**To make the application perform some function, define this function into view.py:
+*Ex:
+def index(request):
+    return HttpResponse("Hello, World") #requires: from django.http import HttpResponse
+####
+**To define when the function is executed: create a urls.py file for the app
+*Inside the urls.py file:
+	-must create urlpatterns=[] which is a list of all allowed urls for the application
+
+	-to define a url, from django.urls import path
+*Defining a url pattern:
+urlpatterns = [
+    # path name is optional, makes it easy to link paths
+    path("", views.index, name="index")  # need to import views.py, from . import views
+]
+#################################################################
+*In the project's main urls.py, add:
+from django.urls import path,include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    
+
+    # linking url paths together means: when you go to ./hello , a function is performed ,
+    # and you should look for it inside hello.urls and 
+    # inside hello.urls: path("", views.index, name="index") , 
+    # meaning when someone visits the home directory, perform the index function
+    
+    path('hello/',include("hello.urls"))
+]
+###################
+*Now if you visit the server/hello, an html page including only Hello, World
+###################################################################################
+**Dynamic Path:
+def greet(request, name):
+    return HttpResponse(f"Hello, {name.title()}")
+
+# means the path can be any string, and the greet function will be called and the pathname passed to it
+    path("<str:name>",views.greet,name="greet"),
+###############################################################
+*Rendering an HTML Page:
+
+def index(request):
+    # can return an entire html file rather than a string, using the render function
+    # first param is a request, second param is a template
+    # best prefix templates in a folder
+    # need to create folders: templates -> hello -> index.html
+    return render(request, "hello/index.html")
+#####################################################################
+**Rendering a Dynamic HTML Page:
+-Django has a way of rendering HTML pages including variables
+*Example: modifying the greet function to return an entire HTML page that is dynamic
+
+def greet(request, name):
+    return render(request, "hello/greet.html",{
+        # a third optional argument is a dictionary of values given to the html page
+        # to make it dynamic
+        # the key is the vbl name seen in the html page
+        "name": name.capitalize()
+    })
+
+#and then inside the html body, {{ }} are used by Django to plug a vbl into html pages
+<h1>Hello, {{ name }}!</h1>
+######################################################################
+**Django Templating:
+-Django has its own ways of introducting programming-language concepts
+into html which is a markup language, such as:
+1 - variables:
+	{{ variable }}
+
+2 - logic:
+	{%if condition %}
+		#do sth
+	{% else %}
+		#do sth else
+	{% endif %} #endif is required
+	#note: indentation makes no difference
+3 - for:
+	{% for task in tasks %}
+            <li>{{ task }}</li>
+	{% empty %}#used if the for loop doesn't run at all
+        {% endfor %}
+#####################################################
+***Django contains features to deal with static files to optimize caching:
+	-Create folders: app_name -> static -> app_name -> styles.css (forexample)
+	-after writing css, write at the top of the html file: {% load static %}
+
+*Ex:
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{% static 'newyear/styles.css' %}">
+	#best to link a stylesheet this way when using django
+###################################################################################
+***Template inheritance:
+-can define a common layout in all pages and specify only the changing part for each page
+*Syntax: if the only changing part is the entire body, in layout.html:
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tasks</title>
+</head>
+<body>
+    <!-- body is just a name  -->
+    {% block body %}
+    {% endblock %}
+</body>
+</html>
+####################################################
+**In html that extend it, the only html written is:
+
+{% extends "tasks/layout.html" %}
+
+{% block body %}
+    <h1>Tasks</h1>
+    <ul>
+        {% for task in tasks %}
+            <li>{{ task }}</li>
+        {% endfor %}
+    </ul>
+{% endblock %}
+#######################################################
+*Links in Django:
+-this method is preferred as django used the name parameter
+in the urls page, not the html page name, which is more dynamic
+*Ex:
+<a href="{% url 'index' %}">Home</a>
+
+**Note: This can lead to a namespace collision due to multiple
+URLs having name="index"
+
+*To resolve the collision:
+-define a global vbl called app_name=tasks for example inside urls.py
+-use it to refer to a specific name parameter as follows:
+<a href="{% url 'tasks:index'  %}>Home</a>
+##################################################
+***CSRF: cross-site request forgery
+-A type of cyber attack, where an attacker can fake a user 
+request for transferring money out of their account for example
+-Django has CSRF protection enabled using middleware, installed to the app in
+the settings file
+
+-Added in a form as follows:
+<form action="{% url 'tasks:add' %}" method="post">
+        {% csrf_token %}
+        <input type="text" name="task">
+        <input type="submit">
+    </form>
+
+*CSRF tokens are written by django as a hidden input
+<input type="hidden" name="csrfmiddlewaretoken" value="token value">
+################################################################################
+**Creating forms in Django:
+-better to make change to form data once, which is reflected everywhere
+
+-in views.py:
+from django import forms
+
+# class newtaskform inherits from forms.Form
+class NewTaskForm(forms.Form):
+    # define all input expected from the user
+    # these functions perform input validation
+    task = forms.CharField(label="New Task")
+    priority = forms.IntegerField(label="Priority", min_value=1, max_value=10)
+
+# passing an object of newtaskform into the add page
+def add(request):
+    return render(request,"tasks/add.html",{
+        "form": NewTaskForm()
+})
+
+-in add.html
+<form action="{% url 'tasks:add' %}" method="post">
+    {% csrf_token %}
+    {{ form }}
+    <input type="submit">
+</form>
+############################################################
+**is_valid(): used for server-side validation:
+-if the server changes the range of a certain field for example and the 
+user is on an outdated version of the site, the user may enter a value
+that is out of range, and client-side validation (in the textbox) cannot
+stop them, so is_valid() is used to re-check the data with the server afterwards
+#################################################
+*Modifying the add function to append to list:
+def add(request):
+#if the request came from the form not just smn opening the page
+    if request.method=='POST':
+        # request.post contains all user-submitted data
+        form = NewTaskForm(request.POST)
+        
+	if form.is_valid():
+	# .cleaned_data returns a dict with key
+	# as vbl name and user values as value
+            task = form.cleaned_data["task"]
+            tasks.append(task)
+	    return HttpResponseRedirect(reverse("tasks:index")
+        else:
+        # if the form is not valid send it to the page
+        # so an error can be displayed such as
+	# "Ensure this value is less than or equal to 5."
+            
+		return render(request,"tasks/add.html",{
+        "form": form
+    })
+
+    #if method is not post (someone opened the page normally)
+    return render(request,"tasks/add.html",{
+        "form": NewTaskForm()
+    })
+############################################################################
+*To Redirect:
+
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+
+#part of the above add function
+
+	if form.is_valid():
+            tasks.append(task)
+	    return HttpResponseRedirect(reverse("tasks:index")
+# reverse takes the name param of a URL and reverse engineers it
+# to know what the actual URL is
+##################################################################################
+**Since tasks = [] is a global vbl, anyone who visits the site 
+can see the same tasks
+-tasks should be session specific
+
+def index(request):
+    #.session is a dict containing all session info
+    if "tasks" not in request.session:
+        request.session["tasks"] = []
+    return render(request,"tasks/index.html",{
+        "tasks":request.session["tasks"]
+    })
+
+#and modifying the append line: request.session["tasks"]+=[task]
+
+
+-Django stores session data as a table
+-To allow Django to create that table and use session storage, run:
+python manage.py migrate
+##########################################################################

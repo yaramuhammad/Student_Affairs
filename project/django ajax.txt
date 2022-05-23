@@ -1,0 +1,190 @@
+* Getting Live Data:
+
+*Steps:
+1- Create a path for getting the info in urls.py
+	* A GET request will be sent to this url
+	* The url sends a json response w/ results
+	* path('get_profiles/', views.get_profiles, name='get_profiles'),
+
+2- in views.py
+from django.http import JsonResponse
+
+def get_profiles(request):
+    profiles = Profile.objects.all()
+    # now should return a json response to whoever asks for the data
+    return JsonResponse({'profiles': list(profiles.values())})
+
+3- in index.html
+- include jquery:
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <ul id="display-data">
+        {# the list is left blank and will be updated by ajax #}
+    </ul>
+
+4- in the js file:
+document.addEventListener('DOMContentLoaded',function()
+{
+    //setting interval for sending ajax request
+    setInterval(function()
+    {
+        //this is an ajax request
+        //takes a json object with given parameters
+        $.ajax({
+            //method of request, get or post
+
+            type: 'GET',
+
+            //the url to send to
+            //remember: this url calls the get_profiles view
+            //which returns a json response with all profiles
+
+            url: {% url 'get_profiles' %},
+
+            //what happens if data is retrieved successfully
+            success:function(response)
+            {
+                //appending the response data to a ul:
+                list = document.querySelector('#display-data');
+                list.innerHTML = '';
+
+
+                //profiles is the key in the context of view get_profiles
+                for (let profile of response.profiles)
+                {
+                    let elem = document.createElement('li');
+                    elem.innerHTML = `${profile['name']} - ${profile['bio']}`;
+                    list.append(elem);
+                }
+            },
+
+            //what happens when an error occurs
+            error: function(response)
+            {
+                alert('An Error Occurred');
+            },
+        });
+        //setting an interval of 1000ms (1 sec)
+    },1000);
+});
+#########################################################################
+** Submitting a form using AJAX:
+1- create the form:
+# Method 1: Using action, not recommended
+<form id="post-form" method="POST" action="{% url 'create' %}">
+    {% csrf_token %}
+    <p>Name</p><input type="text" name="name" id="name"><br>
+    <p>Email</p><input type="text" name="email" id="email"><br>
+    <p>Bio</p><input type="text" name="bio" id="bio"><br>
+    <input type="submit" value="Submit">
+</form>
+
+# Method 2: Using AJAX:
+
+
+2- add a url for the form:
+path('create/',views.create, name='create' ),
+
+3- create the view:
+def create(request):
+    if request.method == 'POST':
+        name = request.POST['name']
+        email = request.POST['email']
+        bio = request.POST['bio']
+
+        new_profile = Profile(name=name, email=email, bio=bio)
+        new_profile.save()
+
+        return HttpResponse('New Profile Created Successfully.')
+
+
+4- in the js file:
+document.querySelector('#post-form').onsubmit = function(e)
+{
+    //replacing action='create' with an AJAX request
+
+    //prevent reloading (not necessary)
+    e.preventDefault();
+
+    let url_var = "{% url 'create' %}"
+
+    //sending an ajax POST request
+    $.ajax({
+        type: 'POST',
+        url: url_var,
+
+        //this data will be accessible to the view via request.POST
+        data: {
+            name: document.querySelector('#name').value,
+            email: document.querySelector('#email').value,
+            bio: document.querySelector('#bio').value,
+
+            //the csrf token must be passed manually
+            csrfmiddlewaretoken: document.querySelector('input[name="csrfmiddlewaretoken"]').value,
+        },
+
+        success: function (response)
+        {
+            //In the view: return HttpResponse('New Profile Created Successfully.')
+            //response is "New Profile Created Successfully"
+            alert(response);
+        },
+        error: function()
+        {
+            alert("Error");
+        }
+
+    })
+
+}
+});
+##################################################################################################
+** Validating if username exists Using AJAX:
+1- create a signup view and create a url for it
+path('signup/', views.SignUp.as_view(), name='signup')
+
+class SignUp(CreateView):
+    form_class = UserCreationForm
+    template_name = 'myapp/signup.html'
+
+2- The form itself
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Sign Up</button>
+</form>
+
+3- Create a view to validate the username and a URL for it:
+
+def validate_username(request):
+    # if the username was sent using a key = 'username
+    username = request.GET['username']
+    is_taken = User.objects.filter(username__iexact=username).exists()
+    data = {'is_taken':is_taken}
+    if data['is_taken']:
+        data['error_message'] = f'Username {username} is already Taken'
+    return JsonResponse(data)
+
+4- create a
+
+//id_username is the default id of the username in the UserCreationForm
+        //with every change in the value of the username in the textbox, perform the following function
+document.querySelector('#id_username').addEventListener('change',function()
+{
+    console.log(this.value);
+    let username = this.value;
+    //now the username can be sent to a view that checks if it is repeated
+    $.ajax({
+        type: 'GET',
+        url: "{% url 'validate_username' %}",
+        data: {'username':username},
+        dataType: 'json',
+        success: function(response)
+        {
+            if (response['is_taken'])
+            {
+                document.querySelector('span').innerHTML = response['error_message'];
+            }
+        }
+    })
+    });

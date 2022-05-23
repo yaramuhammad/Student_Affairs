@@ -1,0 +1,511 @@
+***Models:
+-Python Classes & Objects used to interact with SQL DBs
+***Migrations:
+-Techniques to update DBs
+###########################################################
+**DBMS:
+- MySQL/PostgreSQL: run on bigger servers
+- SQLite: Simpler, stores data as a single file
+###########################################################
+**SQLite Data Types:
+1 - TEXT
+2 - NUMERIC: dates, other types of numbers
+3 - INTEGER
+4 - REAL: Float
+5 - BLOB: binary large object, (audio, files, in pure binary)
+############################################################
+*MYSQL Data Types:
+1 - CHAR(size), VARCHAR(size)
+2 - SMALLINT, INT, BIGINT
+3 - FLOAT, DOUBLE
+###########################################################
+***SQLite Syntax:
+-Autoincrement starts from 1
+-semicolon is required
+-case-insensitive
+
+CREATE TABLE flights(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    origin TEXT NOT NULL,
+    destination TEXT NOT NULL,
+    duration INTEGER NOT NULL
+);
+
+INSERT INTO flights(origin, destination, duration) VALUES("Shanghai", "Paris", 760);
+
+UPDATE flights
+SET duration = 430
+WHERE origin = "New York" AND destination = "London";
+
+DELETE FROM flights
+WHERE destination = "Tokyo";
+
+SELECT FROM
+JOIN ON
+WHERE
+GROUP BY HAVING
+ORDER BY LIMIT
+###########################################################
+**Creating an Empty File in Windows: type nul > your_file.txt
+
+***Creating a SQLite DB:
+type nul > dbname.sql
+
+***Opening the DB (to work on it):
+sqlite3 dbname.sql
+
+***Commands:
+- .tables: list all tables in the DB
+
+*To improve visualization of tables when using SELECT:
+- .mode columns --present the DB in columns mode
+- .headers yes  --give the tables headers
+#######################################################
+***Optimizing Queries:
+- by indexing a table
+- takes time to construct and update when a table is updated
+- but afterwards, makes queries more efficient
+- best for columns that are used often
+
+*Syntax:
+CREATE INDEX index_name ON table_name(column_name);
+#####################################################
+*Race Conditions:
+- When multiple actions are happening simultaneously
+- Collisions can happen
+##############################################################
+**Django Models:
+A way of creating a python class representing
+data that django should store in a DB
+
+*Inside every app -> models.py, where:
+- each model is a python class
+- each model represents a table
+
+*Syntax for creating a model:
+
+from django.db import models
+
+# class Flight inherits from models.Model
+class Flight(models.Model):
+    # define properties of a class:
+    origin = models.CharField(max_length=64)
+    destination = models.CharField(max_length=64)
+    duration = models.IntegerField()
+
+*NOTE: no DB exists yet in the project folder
+##############################################################
+**Migration:
+- Manipulating Data in Django's DB
+*Consists of two steps:
+1- Creating a Migration: Defining what the changes are
+    -Done inside models.py
+    THEN
+    - python manage.py makemigrations
+    - response:
+        Migrations for 'flights':
+        flights\migrations\0001_initial.py
+        - Create model Flight
+    - means:
+        -created file 0001_initial.py in the migrations folder
+        and inside it, there are instructions for the creation of the Flights DB
+
+2- Migrating: Telling Django to Apply those changes to the Database
+    - python manage.py migrate
+    - other default migrations are applied as well
+
+*Afterwards:
+a db.sqlite3 Database is created
+#################################################################################
+***Dealing with the DB file:
+- can open using sqlite3 and run cmd commands
+- or can use Django's abstractions by:
+    -opening Django's shell: python manage.py shell
+###
+*Within the Shell:
+     from appname.models import classname
+#####
+from flights.models import Flight
+
+# Inserting into the table:
+f = Flight(origin="New York", destination="London", duration=415)
+# saving the change
+f.save()
+
+# SELECT * FROM Flight
+Flight.objects.all() # displays <QuerySet [<Flight: Flight object (1)>]>
+
+# can force classes to return results as string by adding a __str__ function to the class
+
+    def __str__(self):
+        return f"{self.id}: {self.origin} to {self.destination}"
+
+# now a query will return <QuerySet [<Flight: 1: New York to London>]>
+>>> f1 = Flight.object.all()
+# getting only the first row
+>>> flight = f1.first()
+# accessing its attributes
+>>> flight.id
+1
+>>> flight.origin
+'New York'
+>>> flight.destination
+'London'
+>>> flight.duration
+415
+# deleting a flight
+>>> flight.delete() # (1, {'flights.Flight': 1})
+###################################################################################
+**Foreign Keys:
+- it is best to define a relation between tables
+*Ex:
+- origin & destination should be Foreign Keys for Airports:
+
+# defining an Airport Relation with a code, city and string function:
+class Airport(models.Model):
+    code = models.CharField(max_length=3)
+    city = models.CharField(max_length=64)
+
+    def __str__(self):
+        return f"{self.city}({self.code})"
+
+
+# modifying Flight to have an origin & dest of Airport
+class Flight(models.Model):
+
+    # defining origin as a Foreign Key for the Airport Table
+
+    # Cascade: when the PK gets deleted, it will
+    # delete all flights in this table associated with it
+
+    # related name: to access data in reverse order
+    # correct order: someFlight.origin -> gets an airport
+    # reverse order: for an airport -> get all flights whose origin is this airport
+
+    # SQL creates this relationship automatically named departures
+    origin = models.ForeignKey(Airport, on_delete=models.CASCADE, related_name="departures")
+
+    # defining destinations as an airport FK
+    destination = models.ForeignKey(Airport, on_delete=models.CASCADE, related_name="arrivals")
+
+    duration = models.IntegerField()
+    def __str__(self):
+        return f"{self.id}: {self.origin} to {self.destination}"
+
+**REMEMBER: those changes need to be applied using:
+1- python manage.py makemigrations
+    *Ex:
+        Migrations for 'flights':
+        flights\migrations\0002_airport_alter_flight_destination_alter_flight_origin.py
+        - Create model Airport
+        - Alter field destination on flight
+        - Alter field origin on flight
+
+2- python manage.py migrate
+    *Ex:
+    Operations to perform:
+    Apply all migrations: admin, auth, contenttypes, flights, sessions
+    Running migrations:
+    Applying flights.0002_airport_alter_flight_destination_alter_flight_origin... OK
+########################################################################################################
+**Using the created Relations in the django shell:
+>>> from flights.models import *
+>>> jfk = Airport(city="New York", code="JFK")
+>>> jfk.save()
+>>> lhr = Airport(code="LHR", city="London")
+>>> lhr.save
+<bound method Model.save of <Airport: London(LHR)>>
+>>> lhr.save()
+>>> cdg = Airport(code="LHR", city="Paris")
+>>> cdg.save()
+>>> nrt = Airport(code="NRT", city="Tokyo")
+>>> nrt.save()
+>>> Airport.objects.all()
+<QuerySet [<Airport: New York(JFK)>, <Airport: London(LHR)>, <Airport: Paris(LHR)>, <Airport: Tokyo(NRT)>]>
+>>> f = Flight(origin=jfk, destination=lhr, duration=415)
+>>> f.save()
+>>> f
+<Flight: 1: New York(JFK) to London(LHR)>
+>>> f.origin
+<Airport: New York(JFK)>
+>>> f.origin.city
+'New York'
+>>> f.origin.code
+'JFK'
+
+# Note Reverse Relations:
+>>> lhr.arrivals.all() # <QuerySet [<Flight: 1: New York(JFK) to London(LHR)>]>
+#####################################################################################
+****USING data from the DB in the website:
+
+*The index function inside views:
+
+# passes all flights to the page to be rendered
+def index(request):
+    return render(request, "flights/index.html",{
+        "flights": Flight.objects.all()
+    })
+
+*The index page (aside from the layout):
+<ul>
+    {% for flight in flights %}
+        <li>{{ flight.id }}:{{ flight.origin }} to {{ flight.destination }}</li>
+    {% endfor %}
+</ul>
+#################################################################################
+***Search for and return a certain object in the DB:
+# using Airport for example:
+Airport.objects.all() # selects all
+
+Airport.objects.filter(city="Paris") # returns a queryset that matches (multiple rows)
+Airport.objects.filter(city="Paris").first() #to access the first object (row)
+
+#returns only one result, combines the prev two lines
+# and will throw an error if there is < or > 1
+Airport.objects.get(city="Paris")
+################################################################################
+***Django Admin: (host/admin)
+- a pre-built app by Django used to manipulate models without having to use the shell
+* To Use Admin:
+    1- create an administrative account for the project:
+            python manage.py createsuperuser
+            my pass is: hello12345
+    2- add your models to the admin app
+        - appname -> admin.py
+        - from .models import Flight, Airport
+          admin.site.register(Airport)
+          admin.site.register(Flight)
+
+    3- go to admin/ and log in
+    4- Can click on relations to add, modify, delete, or view
+
+**NOTE: Foreign Keys are displayed as a drop-down list, including values in its PK
+###################################################################################
+***Application: making /flights/id return info about a particular flight
+
+1- in urls: defining the URL
+    path('<int:flight_id>', views.flight, name="flight"),
+
+2- in views: defining the flight function:
+
+def flight(request, flight_id):
+    # can replace it with id=flight_id
+    flight = Flight.objects.get(pk=flight_id)
+    return render(request, "flights/flight.html", {
+        "flight":flight,
+    })
+
+3- in the flight.html page
+<h1>Flight {{ flight.id }}</h1>
+<ul>
+    <li>Origin: {{ flight.origin }}</li>
+    <li>Destination: {{ flight.destination }}</li>
+    <li>Duration: {{ flight.duration }}</li>
+</ul>
+###########################################################################################
+**Remember: steps for adding a relation:
+1- In models.py:
+    - define a class with attributes
+    - define __str__
+2- run python manage.py makemigrations
+3- run python manage.py migrate
+4- go to admin.py and register the relation (optional)
+###############################################################################################
+**Application: Defining a Passenger Relation (Many-to-Many Flights)
+class Passenger(models.Model):
+    first = models.CharField(max_length=64)
+    last = models.CharField(max_length=64)
+
+    # many-to-many relationship with flights
+    # blank=true allows a passenger to have null flights
+    flight_id = models.ManyToManyField(Flight, blank=True, related_name="passengers")
+
+    def __str__(self):
+        return f"{self.first} {self.last}"
+#############
+*NOTE: many-to-many is represented by admin using a textarea with all flight available to select
+#############################################################################################
+**Using related name:
+-can pass passengers of a certain flight
+{
+"flight":flight,
+"passengers": flight.passengers.all(),# using related_name="passengers"
+}
+#########################################################################################
+**Linking to a dynamic URL:
+    *Syntax: href="{% url 'urlNameParam' param %}"
+    *Ex: <a href="{% url 'flights:flight' flight.id %}">flight.id</a>
+#########################################################################################
+**When manipulating a DB: should always use POST not GET
+**Adding a new record in case of m2m relationships: passenger.flight_id.add(flight)
+**Returning tuples who don't match a query: Passenger.objects.exclude(flight_id=flight).all(),
+###########
+**Application: book a flight
+1- in urls: path('<int:flight_id>/book', views.book, name="book")
+2- in views: the book() function
+
+def book(request, flight_id):
+    if request.method == "POST":
+        # to book a flight, you need to get the flight and the passenger objects
+        flight = Flight.objects.get(pk=flight_id)
+
+        # assume the data is passed through a form whose input name is passenger
+        # the form data could be passed as a string, so cast it
+        passenger = Passenger.objects.get(pk=int(request.POST["passenger"]))
+
+        # many-to-many-relationships: can add this flight to the list of flights
+        # for a passenger:
+        passenger.flight_id.add(flight)
+
+        # "flight" is a URLs name parameter, and since "flight" is a dynamic
+        # url, it takes an argument flight_id, structured as a tuple
+        return HttpResponseRedirect(reverse("flights:flight", args=(flight.id,)))
+
+
+3- need to change flight() to pass non_passengers
+def flight(request, flight_id):
+    # can replace it with id=flight_id
+    flight = Flight.objects.get(pk=flight_id)
+    return render(request, "flights/flight.html", {
+        "flight": flight,
+        "passengers": flight.passengers.all(),
+#.exclude() means return all but those who match the query
+        "non_passengers": Passenger.objects.exclude(flight_id=flight).all(),
+    })
+
+4- Creating a form
+<h2>Add Passenger</h2>
+    <!-- book is the view name parameter which calls the book function -->
+    <!-- and book function takes flight_id as param -->
+
+    <form action="{% url 'flights:book' flight.id%}" method="post">
+
+        <!-- add the token to all forms for security -->
+        {% csrf_token %}
+
+        <!-- The input name is passenger because of request.POST["passenger"] -->
+        <select name="passenger">
+
+            <!-- Need to access all passengers who are not on this flight -->
+            {% for passenger in non_passengers %}
+
+                <!-- The user sees the passenger's name, but the id is submitted -->
+                <option value="{{ passenger.id }}">{{ passenger }}</option>
+
+            {% endfor %}
+
+        </select>
+
+        <!-- Must have a submit button to call the form action -->
+        <input type="submit">
+    </form>
+############################################################################################
+***Altering the admin interface: go to admin.py
+
+# To display extra information when accessing the Flight DB
+class FlightAdmin(admin.ModelAdmin):
+    #list_display is built in
+    list_display = ("id", "origin", "destination", "duration")
+
+class PassengerAdmin(admin.ModelAdmin):
+    # easier to manipulate m2m rel. using a horizontal filter
+    # using the m2m attribute
+    filter_horizontal = ("flight_id",)
+
+# register the Flight DB but use FlightAdmin Settings
+admin.site.register(Flight, FlightAdmin)
+admin.site.register(Passenger, PassengerAdmin)
+##########################################################################################
+**REMEMBER:
+- if you use POST to submit a form, this data can be accessed using request.POST["nameparam"]
+############################################################################3
+***Authentication:
+- Django has a built-in authentication system
+
+*Steps:
+- create a new application for users, add it to INSTALLED_APPS, and add its path
+- Give it a default, login, and logout path:
+    *Ex:
+    path("", views.index, name="index"),
+    path("login/", views.login_view, name="login"),
+    path("logout/", views.logout_view, name="logout"),
+#############
+**Index:
+
+*Logic:
+- if the user is logged in already, take them to the Homepage
+- if not, take them to the login Page
+
+*Syntax:
+def index(request):
+    if not request.user.is_authenticated:
+        # if not logged in, redirect to the login page
+        return HttpResponseRedirect(reverse("users:login"))
+    else:
+        return render(request, "users/user.html")
+*Index html page:
+<!-- NOTE: a page already has access to the request -->
+    <h1>Welcome, {{ request.user.first_name }}</h1>
+    <ul>
+        <li>Username: {{ request.user.username }}</li>
+        <li>Email: {{ request.user.email }}</li>
+    </ul>
+    <a href="{% url 'users:logout' %}">Log Out</a>
+####################
+**NOTE: request.user:
+    - contains user info (username, other fields)
+    - if login is successful, returned, else None
+###########################################################################
+***Login:
+
+
+*Login Form:
+<!-- Login Form, redirects to the current page -->
+    <form action="{% url 'users:login' %}" method="post">
+        {% csrf_token %}
+
+        <!-- REMEMBER: form data accessed through name parameters -->
+        <!-- Ex: request.POST["username"] -->
+
+        <input type="text" name="username" placeholder="Username">
+        <input type="password" name="password" placeholder="Password">
+        <input type="submit" value="Login">
+    </form>
+
+
+*Call Methods: the login page can be called using:
+- GET: normal person wants to log in
+    -render the page normally
+- POST: user submitting their credentials for checking
+    - from django.contrib.auth import authenticate, login, logout
+    - retrieve their username and password and pass them into the authenticate function
+    - if valid, redirect to the Homepage
+    - if not, render the same page with a message of failure
+
+*Login Function:
+def login_view(request):
+    if request.method=="POST":
+        username = request.POST["username"]
+        password = request.POST["password"]
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+            return HttpResponseRedirect(reverse("users:index"))
+        else:
+            return render(request, "users/login.html",{
+                "message": "Invalid credentials",
+            })
+    return render(request, "users/login.html")
+
+#####################################################################################
+**Logout:
+- use the logout function and render to the login page
+
+*Syntax:
+def logout_view(request):
+    logout(request)
+    return render(request, "users/login.html", {
+        "message":"Logged Out.",
+    })
+############################################################################################################
